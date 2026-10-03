@@ -15,6 +15,7 @@ from backend.agent.executor import execute_agent
 from backend.llm import GeminiChatModel, ModelToolCall, ModelTurn, OpenAICompatibleChatModel, get_chat_model, get_model_config
 from backend.observability import append_jsonl
 from backend.services.tigergraph_service import REQUIRED_EDGES, REQUIRED_QUERIES, REQUIRED_VERTICES, TigerGraphService
+from app.__main__ import main as app_main
 from app.server import DemoHandler
 from benchmark.run import DEFAULT_INPUTS, _run_one, load_questions, run_benchmark
 from evaluation.answers import evaluate_answer
@@ -659,6 +660,12 @@ class AgentTrajectoryTests(unittest.TestCase):
 
 
 class DemoServerTests(unittest.TestCase):
+    @patch("app.server.serve")
+    @patch("app.__main__.ensure_tigergraph_ready", side_effect=AssertionError("must not gate dashboard startup"))
+    def test_web_dashboard_can_start_without_tigergraph(self, _readiness, serve):
+        self.assertEqual(app_main(["--web"]), 0)
+        serve.assert_called_once_with("127.0.0.1", 8000)
+
     def test_question_ui_and_compare_api(self):
         def fake(question, **kwargs):
             return {"success": True, "data": {"answer": f"answer for {question}", "tool_calls": [], "evidence": []}}
@@ -673,6 +680,14 @@ class DemoServerTests(unittest.TestCase):
             ):
                 page = urllib.request.urlopen(base_url + "/").read().decode("utf-8")
                 self.assertIn("Olympic knowledge, tested.", page)
+                dashboard = urllib.request.urlopen(base_url + "/dashboard").read().decode("utf-8")
+                self.assertIn("Evidence across the evaluation sets.", dashboard)
+                metrics = json.loads(urllib.request.urlopen(base_url + "/api/metrics").read())
+                public, hidden = metrics["datasets"]
+                self.assertEqual((public["question_count"], hidden["question_count"]), (100, 50))
+                self.assertEqual(public["pipelines"]["agentic"]["correct_questions"], 38)
+                self.assertIsNone(hidden["pipelines"]["agentic"]["accuracy"])
+                self.assertNotIn("per_question", metrics)
                 request = urllib.request.Request(
                     base_url + "/api/run",
                     data=json.dumps({"question": "test", "mode": "compare"}).encode("utf-8"),

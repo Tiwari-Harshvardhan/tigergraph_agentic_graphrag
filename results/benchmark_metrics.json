@@ -1,0 +1,114 @@
+{
+  "model": "openai/gpt-oss-20b via OpenRouter",
+  "generated_at": "2026-09-28",
+  "datasets": [
+    {
+      "id": "public",
+      "label": "Public evaluation",
+      "question_count": 100,
+      "answer_file": "results/runs/public-gpt-oss-20b-openrouter-20260928T153539Z.jsonl",
+      "evaluation_file": "results/runs/public-gpt-oss-20b-openrouter-20260928T153539Z.evaluation.json",
+      "pipelines": {
+        "rag": {
+          "questions": 100,
+          "scored_questions": 100,
+          "correct_questions": 18,
+          "accuracy": 0.18,
+          "average_latency_seconds": 20.275961093000777,
+          "median_latency_seconds": 19.714451449993703,
+          "p95_latency_seconds": 42.75719819999995,
+          "average_llm_tokens": 2195.72,
+          "total_llm_tokens": 219572,
+          "average_tool_calls": 1,
+          "total_tool_calls": 100,
+          "failures": 0,
+          "failure_rate": 0
+        },
+        "graphrag": {
+          "questions": 100,
+          "scored_questions": 83,
+          "correct_questions": 27,
+          "accuracy": 0.3253012048192771,
+          "average_latency_seconds": 66.65514901600012,
+          "median_latency_seconds": 20.417048999997405,
+          "p95_latency_seconds": 216.093944799999,
+          "average_llm_tokens": 4397.442105263158,
+          "total_llm_tokens": 417757,
+          "average_tool_calls": 0.91,
+          "total_tool_calls": 91,
+          "failures": 17,
+          "failure_rate": 0.17
+        },
+        "agentic": {
+          "questions": 100,
+          "scored_questions": 94,
+          "correct_questions": 38,
+          "accuracy": 0.40425531914893614,
+          "average_latency_seconds": 33.7662687499996,
+          "median_latency_seconds": 19.59831284999018,
+          "p95_latency_seconds": 92.53449230000842,
+          "average_llm_tokens": 5569.4,
+          "total_llm_tokens": 556940,
+          "average_tool_calls": 1.63,
+          "total_tool_calls": 163,
+          "failures": 6,
+          "failure_rate": 0.06
+        }
+      }
+    },
+    {
+      "id": "hidden",
+      "label": "Hidden evaluation",
+      "question_count": 50,
+      "answer_file": "results/runs/hidden-gpt-oss-20b-openrouter-20260928T153539Z.jsonl",
+      "evaluation_file": "results/runs/hidden-gpt-oss-20b-openrouter-20260928T153539Z.evaluation.json",
+      "pipelines": {
+        "rag": {
+          "questions": 50,
+          "scored_questions": 0,
+          "correct_questions": 0,
+          "accuracy": null,
+          "average_latency_seconds": 32.1925921439999,
+          "median_latency_seconds": 29.473988050000116,
+          "p95_latency_seconds": 53.27832640000088,
+          "average_llm_tokens": 2370.42,
+          "total_llm_tokens": 118521,
+          "average_tool_calls": 1,
+          "total_tool_calls": 50,
+          "failures": 0,
+          "failure_rate": 0
+        },
+        "graphrag": {
+          "questions": 50,
+          "scored_questions": 0,
+          "correct_questions": 0,
+          "accuracy": null,
+          "average_latency_seconds": 80.87597398600006,
+          "median_latency_seconds": 34.494575050001,
+          "p95_latency_seconds": 319.6972155000003,
+          "average_llm_tokens": 4570.510204081633,
+          "total_llm_tokens": 223955,
+          "average_tool_calls": 0.88,
+          "total_tool_calls": 44,
+          "failures": 7,
+          "failure_rate": 0.14
+        },
+        "agentic": {
+          "questions": 50,
+          "scored_questions": 0,
+          "correct_questions": 0,
+          "accuracy": null,
+          "average_latency_seconds": 37.59356674600007,
+          "median_latency_seconds": 20.466031199998724,
+          "p95_latency_seconds": 108.35263529999793,
+          "average_llm_tokens": 7461.877551020408,
+          "total_llm_tokens": 365632,
+          "average_tool_calls": 1.9,
+          "total_tool_calls": 95,
+          "failures": 6,
+          "failure_rate": 0.12
+        }
+      }
+    }
+  ]
+}

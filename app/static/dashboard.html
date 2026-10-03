@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Benchmark Metrics | Olympic GraphRAG Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --ink:#17251f; --muted:#68756e; --paper:#f4f6f1; --panel:#fff; --line:#dce3d9; --green:#1e5b47; --deep:#123d31; --lime:#d5ef69; --coral:#d96f4c; --blue:#376d82; --mono:"DM Mono",Consolas,monospace; --sans:"Manrope","Segoe UI",sans-serif; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--paper); font-family:var(--sans); }
+    .topbar { min-height:64px; padding:0 5vw; display:flex; align-items:center; justify-content:space-between; gap:16px; color:#f4f6f1; background:var(--deep); border-bottom:3px solid var(--lime); }
+    .brand { display:flex; align-items:center; gap:12px; font-weight:800; }
+    .mark { width:29px; height:29px; display:grid; place-items:center; color:var(--deep); background:var(--lime); font:500 12px var(--mono); }
+    nav { display:flex; gap:18px; font:12px var(--mono); }
+    a { color:inherit; }
+    main { width:min(1320px,92vw); margin:auto; padding:42px 0 64px; }
+    .eyebrow { margin:0 0 10px; color:var(--green); font:12px var(--mono); text-transform:uppercase; }
+    h1 { margin:0; font-size:34px; line-height:1.15; }
+    .lede { max-width:760px; margin:12px 0 26px; color:var(--muted); font-size:14px; line-height:1.7; }
+    .run-meta { display:flex; flex-wrap:wrap; gap:8px 22px; padding:13px 0; border-block:1px solid var(--line); color:var(--muted); font:11px var(--mono); }
+    .dataset { margin-top:32px; }
+    .dataset-head { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:8px 20px; margin-bottom:12px; }
+    h2 { margin:0; font-size:20px; }
+    .dataset-head p { margin:0; color:var(--muted); font:11px var(--mono); }
+    .table-wrap { overflow-x:auto; background:var(--panel); border:1px solid var(--line); }
+    table { width:100%; min-width:850px; border-collapse:collapse; text-align:right; font-size:12px; }
+    th,td { padding:12px 13px; border-bottom:1px solid var(--line); white-space:nowrap; }
+    th { color:var(--muted); background:#edf1e9; font:10px var(--mono); text-transform:uppercase; }
+    th:first-child,td:first-child { text-align:left; }
+    tbody tr:last-child td { border-bottom:0; }
+    .pipeline { display:inline-flex; align-items:center; gap:8px; font-weight:700; }
+    .dot { width:8px; height:8px; background:var(--blue); }
+    tr[data-pipeline="graphrag"] .dot { background:var(--coral); }
+    tr[data-pipeline="agentic"] .dot { background:var(--green); }
+    .note { margin:12px 0 0; color:var(--muted); font-size:12px; line-height:1.6; }
+    code { font-family:var(--mono); }
+    footer { margin-top:34px; padding-top:12px; color:var(--muted); border-top:1px solid var(--line); font:10px var(--mono); }
+    @media (max-width:600px) { .topbar { padding:0 3vw; } nav { gap:10px; } main { width:94vw; padding-top:28px; } h1 { font-size:28px; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="mark">TG</span><span>OLYMPIC GRAPHRAG LAB</span></div>
+    <nav aria-label="Main navigation"><a href="/">Live comparison</a><a href="/dashboard" aria-current="page">Metrics</a></nav>
+  </header>
+  <main>
+    <p class="eyebrow">Benchmark / pipeline comparison</p>
+    <h1>Evidence across the evaluation sets.</h1>
+    <p class="lede">Recorded results for RAG, GraphRAG, and Agentic GraphRAG on the public and hidden Olympic question sets. Accuracy is evaluated only where reference answers are available.</p>
+    <div id="run-meta" class="run-meta" aria-live="polite">Loading benchmark summary...</div>
+    <div id="datasets" aria-live="polite"></div>
+    <footer>Offline aggregate snapshot · run dates and model are shown above · hidden question text is not served by this dashboard</footer>
+  </main>
+<script>
+  const pipelines = ["rag", "graphrag", "agentic"];
+  const labels = {rag:"RAG", graphrag:"GraphRAG", agentic:"Agentic GraphRAG"};
+  const value = (number, digits = 1) => number == null ? "Not scored" : Number(number).toFixed(digits);
+  const percent = (number) => number == null ? "Not scored" : `${(Number(number) * 100).toFixed(1)}%`;
+  const seconds = (number) => number == null ? "n/a" : `${Number(number).toFixed(1)} s`;
+  const tokens = (number) => number == null ? "n/a" : Math.round(number).toLocaleString();
+
+  function datasetSection(dataset) {
+    const rows = pipelines.map((pipeline) => {
+      const metric = dataset.pipelines[pipeline];
+      const correct = metric.scored_questions ? `${metric.correct_questions} / ${metric.scored_questions}` : "Not scored";
+      return `<tr data-pipeline="${pipeline}"><td><span class="pipeline"><i class="dot"></i>${labels[pipeline]}</span></td><td>${correct}</td><td>${percent(metric.accuracy)}</td><td>${seconds(metric.average_latency_seconds)}</td><td>${seconds(metric.p95_latency_seconds)}</td><td>${percent(metric.failure_rate)}</td><td>${tokens(metric.average_llm_tokens)}</td><td>${value(metric.average_tool_calls, 2)}</td></tr>`;
+    }).join("");
+    const section = document.createElement("section");
+    section.className = "dataset";
+    section.innerHTML = `<div class="dataset-head"><h2>${dataset.label}</h2><p>${dataset.question_count} questions · ${dataset.question_count * pipelines.length} pipeline answers</p></div><div class="table-wrap"><table><thead><tr><th>Pipeline</th><th>Correct / scored</th><th>Accuracy</th><th>Mean latency</th><th>p95 latency</th><th>Failure rate</th><th>Mean LLM tokens</th><th>Mean tool calls</th></tr></thead><tbody>${rows}</tbody></table></div><p class="note">Answer records: <code>${dataset.answer_file}</code> · Evaluation summary: <code>${dataset.evaluation_file}</code></p></section>`;
+    return section;
+  }
+
+  fetch("/api/metrics", {cache:"no-store"})
+    .then((response) => { if (!response.ok) throw new Error("Benchmark metrics are unavailable."); return response.json(); })
+    .then((report) => {
+      document.querySelector("#run-meta").textContent = `Model: ${report.model} · Evaluation snapshots: ${report.generated_at}`;
+      const container = document.querySelector("#datasets");
+      report.datasets.forEach((dataset) => container.append(datasetSection(dataset)));
+    })
+    .catch((error) => { document.querySelector("#run-meta").textContent = error.message; });
+</script>
+</body>
+</html>

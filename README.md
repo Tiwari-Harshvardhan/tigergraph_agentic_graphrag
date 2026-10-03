@@ -6,19 +6,25 @@ Compare conventional RAG, GraphRAG, and Agentic GraphRAG over a 2,951-document O
 
 ```mermaid
 flowchart TD
-  Q[Question] --> R[RAG]
-  Q --> G[GraphRAG]
-  Q --> A[Agentic GraphRAG]
-  R --> V[TigerGraph vector_search]
-  G --> P[LLM structured operation]
-  P --> T[Deterministic graph tool]
-  A --> M[LLM tool/function calling]
-  M -->|multiple calls allowed| T
-  V --> E[Evidence and trace]
+  Q[Question] --> R[RAG pipeline]
+  Q --> G[GraphRAG pipeline]
+  Q --> A[Agentic GraphRAG pipeline]
+  subgraph Retrieval and reasoning
+    R --> V[TigerGraph vector_search]
+    G --> P[LLM selects structured operation]
+    P --> T[Deterministic TigerGraph tool]
+    A --> M[LLM selects tools]
+    M -->|repeat within turn limit| T
+    M --> V
+    M --> C[graph_context / temporal_search]
+  end
+  V --> E[Evidence and execution trace]
   T --> E
+  C --> E
   E --> F[Final answer]
-  F --> B[JSONL benchmark results]
-  B --> X[Deterministic evaluation]
+  F --> J[JSONL answer records]
+  J --> X[Deterministic evaluator]
+  X --> D[Metrics dashboard]
 ```
 
 ## TigerGraph
@@ -41,7 +47,18 @@ The benchmark aggregation example (`Biathlon`, `2018 Winter Olympics`, competito
 
 ## Setup
 
-Use Python 3.10 or later. Install dependencies:
+### Clone and install
+
+Use Python 3.10 or later, Git, and Git LFS. Clone the repository and fetch the large embedding artifacts:
+
+```powershell
+git lfs install
+git clone https://github.com/Tiwari-Harshvardhan/tigergraph_agentic_graphrag.git
+cd tigergraph_agentic_graphrag
+git lfs pull
+```
+
+Create a virtual environment and install Python dependencies:
 
 ```powershell
 python -m venv .venv
@@ -50,7 +67,7 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Edit `.env` locally. Never commit it. The Gemini key previously pasted in chat was not copied into `.env`; revoke/rotate it and put the replacement directly in your local `.env` as `GEMINI_API_KEY`.
+Edit `.env` locally with the TigerGraph connection and one supported LLM provider. Never commit `.env`; `.env.example` is the safe template. Keep API keys out of commands, logs, benchmark artifacts, and chat.
 
 Relevant settings:
 
@@ -62,6 +79,18 @@ Relevant settings:
 - `TIGERGRAPH_AUTO_START`, `TIGERGRAPH_START_TIMEOUT`, and `TIGERGRAPH_POLL_INTERVAL` control readiness behavior.
 
 Do not paste secrets into commands, logs, benchmark data, or chat.
+
+### Source layout
+
+- `app/` contains the local web UI and HTTP server.
+- `backend/pipelines/` implements RAG, GraphRAG, and Agentic GraphRAG; `backend/tools/` wraps the installed TigerGraph queries.
+- `backend/agent/` defines tool schemas, agent state, and the bounded tool-calling loop.
+- `benchmark/` runs the question sets and writes one JSONL record per pipeline/question; `evaluation/` scores saved records deterministically.
+- `preprocessing/` contains scripts for extracting and normalizing documents, editions, event fields, chunks, embeddings, and `preceded_by` relations.
+- `tigergraph/queries/` contains the GSQL query sources; `tigergraph/loading/` contains the embedding upload utility.
+- `corpus/` contains the derived corpus and intermediate JSON/JSONL datasets. The two large `chunks_with_embeddings*.json` artifacts are stored using Git LFS.
+
+The TigerGraph graph and its six query endpoints must already be provisioned. This repository does not recreate or reload that graph during normal startup. Use the readiness commands below to confirm that the remote graph, schema, installed queries, and vector index are available.
 
 ## TigerGraph Readiness
 
@@ -97,22 +126,44 @@ Start the local browser demo after the graph readiness check:
 python -m app --web
 ```
 
-Open `http://127.0.0.1:8000`. The question console can run RAG, GraphRAG, Agentic GraphRAG, or compare all three, and displays answers, latency, provider-reported token usage, tool calls, and evidence. The server binds to localhost by default; use `--host` and `--port` only when you intentionally need another bind address.
+Open `http://127.0.0.1:8000` for the live question console. It can run RAG, GraphRAG, Agentic GraphRAG, or compare all three on one question, showing answers, latency, provider-reported token usage, tool calls, and evidence.
+
+Open the benchmark metrics dashboard at **http://127.0.0.1:8000/dashboard**. It compares the recorded public 100-question and hidden 50-question runs across all three pipelines: accuracy/scored counts where answer keys exist, mean and p95 latency, failure rate, mean LLM tokens, and mean tool calls. Hidden-set accuracy is displayed as not scored because the hidden set has no local gold answers. The dashboard reads the aggregate snapshot at `results/benchmark_metrics.json` and does not require TigerGraph or an LLM. Live health checks and query requests still require the graph to be reachable.
+
+Both pages are served locally by default. The server binds to `127.0.0.1`; use `--host` and `--port` only when intentionally changing the bind address.
 
 ## Benchmark
 
-The default benchmark combines all 100 public and 50 hidden questions. Run one system or all three:
+The benchmark runner defaults to both question files, but the hidden input file is intentionally not distributed. On a fresh clone, run the available public set explicitly, one pipeline or all three:
 
 ```powershell
 python -m benchmark.run --pipeline rag
 python -m benchmark.run --pipeline graphrag
 python -m benchmark.run --pipeline agentic
-python -m benchmark.run --pipeline all
+python -m benchmark.run --pipeline all --input questions/eval_public.jsonl --output results/runs/public-local.jsonl
 ```
+
+If you are authorized to use a local `questions/eval_hidden.jsonl`, pass both inputs explicitly with repeated `--input` options to run the full 150-question set.
 
 Options include `--input` (repeat to combine files), `--output`, `--limit`, `--question-id`, `--resume`, `--parallel` / `--sequential`, `--workers`, `--top-k`, and `--max-tool-turns`. Sequential is the default for rate limits and reproducibility. Parallel execution is opt-in.
 
 Each result row records run ID, timestamp, question ID/text, expected answer if present, pipeline, answer, correctness, latency, reported token usage, tool calls, evidence, errors, and model/graph configuration. Hidden records have no expected answer, so their correctness remains `null`. Result files live under `results/runs/` by default and are Git-ignored; do not publish files containing hidden question text.
+
+The saved all-pipeline answer records for the latest 100-public/50-hidden OpenRouter run are:
+
+- Public answers (100 IDs, 300 pipeline records): `results/runs/public-gpt-oss-20b-openrouter-20260928T153539Z.jsonl`
+- Hidden answers (50 IDs, 150 pipeline records): `results/runs/hidden-gpt-oss-20b-openrouter-20260928T153539Z.jsonl`
+- Public evaluation output: `results/runs/public-gpt-oss-20b-openrouter-20260928T153539Z.evaluation.json`
+- Hidden evaluation output (operational metrics only; no correctness labels): `results/runs/hidden-gpt-oss-20b-openrouter-20260928T153539Z.evaluation.json`
+
+These raw run files are local artifacts and are intentionally excluded from Git; the hidden JSONL contains hidden question text. On a fresh clone, the committed aggregate metrics dashboard remains available, while question-level records must be generated locally or supplied through an authorized private channel. To regenerate a run, provide the relevant `--input` files and an output path, for example:
+
+```powershell
+python -m benchmark.run --pipeline all --input questions/eval_public.jsonl --output results/runs/public-local.jsonl
+python -m evaluation.evaluate --input results/runs/public-local.jsonl
+```
+
+The hidden input file is not distributed in the repository. Do not commit or publish hidden questions or their raw answer records.
 
 ## Evaluation
 
@@ -146,4 +197,4 @@ The hidden benchmark has no gold answers in the local file, so accuracy cannot b
 
 ## Data Source
 
-The corpus is derived from English Wikipedia and carries CC BY-SA 4.0 attribution in the source records. The corpus, rather than current external information or model memory, is the benchmark source of truth.
+The corpus is derived from English Wikipedia and carries CC BY-SA 4.0 attribution in the source records. `preprocessing/` documents and implements the extraction and normalization path into the files under `corpus/`; generated embedding files use `all-MiniLM-L6-v2`. For questions about the benchmark, the corpus is the source of truth rather than current external information or model memory. Preserve the source-record attribution and applicable share-alike terms when redistributing derived corpus data.

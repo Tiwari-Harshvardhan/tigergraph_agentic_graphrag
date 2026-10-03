@@ -9,11 +9,50 @@ from backend.services.tigergraph_service import ensure_tigergraph_ready
 
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+METRICS_FILE = Path(__file__).resolve().parents[1] / "results" / "benchmark_metrics.json"
 PIPELINES = {
     "rag": run_rag,
     "graphrag": run_graphrag,
     "agentic": execute_agent,
 }
+METRIC_FIELDS = (
+    "questions",
+    "scored_questions",
+    "correct_questions",
+    "accuracy",
+    "average_latency_seconds",
+    "median_latency_seconds",
+    "p95_latency_seconds",
+    "average_llm_tokens",
+    "total_llm_tokens",
+    "average_tool_calls",
+    "total_tool_calls",
+    "failures",
+    "failure_rate",
+)
+
+
+def load_benchmark_metrics() -> dict:
+    with METRICS_FILE.open(encoding="utf-8") as source:
+        report = json.load(source)
+    return {
+        "model": report["model"],
+        "generated_at": report["generated_at"],
+        "datasets": [
+            {
+                "id": dataset["id"],
+                "label": dataset["label"],
+                "question_count": dataset["question_count"],
+                "answer_file": dataset["answer_file"],
+                "evaluation_file": dataset["evaluation_file"],
+                "pipelines": {
+                    name: {field: metrics.get(field) for field in METRIC_FIELDS}
+                    for name, metrics in dataset["pipelines"].items()
+                },
+            }
+            for dataset in report["datasets"]
+        ],
+    }
 
 
 def run_request(payload: dict) -> dict:
@@ -47,16 +86,29 @@ class DemoHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
+        if self.path == "/api/metrics":
+            try:
+                self._send_json(200, load_benchmark_metrics())
+            except (OSError, KeyError, json.JSONDecodeError) as error:
+                self._send_json(503, {"error": f"Benchmark metrics are unavailable: {error}"})
+            return
         if self.path == "/health":
             try:
                 self._send_json(200, ensure_tigergraph_ready())
             except Exception as error:
                 self._send_json(503, {"ready": False, "error": str(error)})
             return
-        if self.path not in {"/", "/index.html"}:
+        pages = {
+            "/": "index.html",
+            "/index.html": "index.html",
+            "/dashboard": "dashboard.html",
+            "/dashboard/": "dashboard.html",
+        }
+        page = pages.get(self.path)
+        if page is None:
             self._send_json(404, {"error": "Not found"})
             return
-        body = (STATIC_DIR / "index.html").read_bytes()
+        body = (STATIC_DIR / page).read_bytes()
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))

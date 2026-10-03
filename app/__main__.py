@@ -33,6 +33,12 @@ def main(argv=None) -> int:
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args(argv)
 
+    if args.web:
+        from app.server import serve
+
+        serve(args.host, args.port)
+        return 0
+
     try:
         readiness = ensure_tigergraph_ready()
     except Exception as error:
@@ -40,11 +46,6 @@ def main(argv=None) -> int:
         return 1
 
     print(json.dumps(readiness, ensure_ascii=False, indent=2))
-    if args.web:
-        from app.server import serve
-
-        serve(args.host, args.port)
-        return 0
     if args.check or not sys.stdin.isatty():
         return 0
 
