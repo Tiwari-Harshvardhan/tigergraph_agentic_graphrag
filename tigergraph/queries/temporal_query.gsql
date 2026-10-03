@@ -1,0 +1,56 @@
+CREATE OR REPLACE QUERY temporal_query(
+  STRING p_mode,
+  UINT p_from_year,
+  UINT p_to_year,
+  STRING p_reference_event_id,
+  STRING p_sport,
+  STRING p_discipline,
+  UINT p_limit
+) FOR GRAPH wikipedia_corpus {
+  SumAccum<UINT> @@reference_year;
+  SumAccum<UINT> @@reference_count;
+
+  reference_event = SELECT e
+    FROM events:e
+    WHERE e.event_id == p_reference_event_id
+    ACCUM @@reference_year += e.year, @@reference_count += 1;
+
+  eligible_events = SELECT e
+    FROM events:e
+    WHERE (p_sport == "" OR e.sport == p_sport)
+      AND (p_discipline == "" OR e.discipline == p_discipline);
+
+  IF p_mode == "before" THEN
+    results = SELECT e FROM eligible_events:e
+      WHERE @@reference_count > 0 AND e.year < @@reference_year
+      ORDER BY e.year DESC
+      LIMIT p_limit;
+  ELSE
+    IF p_mode == "after" THEN
+      results = SELECT e FROM eligible_events:e
+        WHERE @@reference_count > 0 AND e.year > @@reference_year
+        ORDER BY e.year ASC
+        LIMIT p_limit;
+    ELSE
+      IF p_mode == "between" THEN
+        results = SELECT e FROM eligible_events:e
+          WHERE e.year >= p_from_year AND e.year <= p_to_year
+          ORDER BY e.year ASC
+          LIMIT p_limit;
+      ELSE
+        IF p_mode == "first" THEN
+          results = SELECT e FROM eligible_events:e
+            ORDER BY e.year ASC
+            LIMIT p_limit;
+        ELSE
+          results = SELECT e FROM eligible_events:e
+            WHERE p_mode == "last"
+            ORDER BY e.year DESC
+            LIMIT p_limit;
+        END;
+      END;
+    END;
+  END;
+
+  PRINT results;
+}

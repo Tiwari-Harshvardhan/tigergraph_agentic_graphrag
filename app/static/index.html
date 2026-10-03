@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Olympic GraphRAG Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #17251f;
+      --muted: #68756e;
+      --paper: #f4f6f1;
+      --panel: #ffffff;
+      --line: #dce3d9;
+      --green: #1e5b47;
+      --green-deep: #123d31;
+      --lime: #d5ef69;
+      --coral: #d96f4c;
+      --blue: #376d82;
+      --mono: "DM Mono", Consolas, monospace;
+      --sans: "Manrope", "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); }
+    button, textarea, input { font: inherit; }
+    .topbar { min-height: 64px; padding: 0 5vw; display: flex; align-items: center; justify-content: space-between; color: #f4f6f1; background: var(--green-deep); border-bottom: 3px solid var(--lime); }
+    .brand { display: flex; gap: 12px; align-items: center; font-weight: 800; letter-spacing: 0; }
+    .brand-mark { width: 29px; height: 29px; display: grid; place-items: center; color: var(--green-deep); background: var(--lime); font-family: var(--mono); font-size: 12px; font-weight: 500; }
+    .top-meta { display: flex; align-items: center; gap: 18px; color: #c5d4ca; font: 12px var(--mono); }
+    .status { display: inline-flex; align-items: center; gap: 8px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #9da89f; }
+    .status-dot.online { background: var(--lime); box-shadow: 0 0 0 3px #d5ef6922; }
+    .status-dot.offline { background: #f28c6d; }
+    main { width: min(1320px, 92vw); margin: 0 auto; padding: 42px 0 64px; }
+    .intro { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 24px; margin-bottom: 26px; }
+    .eyebrow { margin: 0 0 10px; color: var(--green); font: 12px var(--mono); text-transform: uppercase; }
+    h1 { margin: 0; max-width: 720px; font-size: 36px; line-height: 1.1; letter-spacing: 0; }
+    .intro-copy { max-width: 380px; margin: 12px 0 0; color: var(--muted); font-size: 14px; line-height: 1.65; }
+    .dataset-stats { display: flex; gap: 18px; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .stat { min-width: 86px; }
+    .stat strong { display: block; font: 500 18px var(--mono); }
+    .stat span { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; text-transform: uppercase; }
+    .workspace { display: grid; grid-template-columns: minmax(320px, 0.8fr) minmax(0, 1.5fr); gap: 24px; align-items: start; }
+    .query-panel { padding: 22px; background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--green); }
+    .panel-kicker { margin: 0 0 14px; color: var(--muted); font: 11px var(--mono); text-transform: uppercase; }
+    textarea { width: 100%; min-height: 138px; resize: vertical; padding: 14px; color: var(--ink); background: #fbfcf9; border: 1px solid var(--line); border-radius: 2px; outline: none; line-height: 1.55; }
+    textarea:focus { border-color: var(--green); box-shadow: 0 0 0 2px #1e5b4715; }
+    .mode-label { margin: 22px 0 9px; color: var(--muted); font: 11px var(--mono); text-transform: uppercase; }
+    .mode-switch { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; padding: 3px; background: #edf1e9; border: 1px solid var(--line); }
+    .mode-switch label { cursor: pointer; text-align: center; }
+    .mode-switch input { position: absolute; opacity: 0; pointer-events: none; }
+    .mode-switch span { display: block; padding: 9px 4px; color: #526159; font-size: 11px; font-weight: 700; }
+    .mode-switch input:checked + span { color: #fff; background: var(--green); }
+    .mode-switch input:focus-visible + span { outline: 2px solid var(--coral); }
+    .controls { display: flex; gap: 16px; margin-top: 16px; }
+    .control { flex: 1; }
+    .control label { display: block; margin-bottom: 6px; color: var(--muted); font: 10px var(--mono); text-transform: uppercase; }
+    .control input { width: 100%; height: 38px; padding: 0 10px; border: 1px solid var(--line); background: #fbfcf9; color: var(--ink); }
+    .submit-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; }
+    .submit-row small { color: var(--muted); font-size: 11px; }
+    .run-button { min-height: 43px; padding: 0 16px; border: 0; border-radius: 2px; background: var(--lime); color: var(--green-deep); font-weight: 800; cursor: pointer; }
+    .run-button:hover { background: #c8e64e; }
+    .run-button:disabled { cursor: wait; opacity: .55; }
+    .results { min-height: 320px; }
+    .results-head { display: flex; justify-content: space-between; align-items: center; padding: 0 0 12px; border-bottom: 1px solid var(--line); }
+    .results-head h2 { margin: 0; font-size: 15px; }
+    .run-state { color: var(--muted); font: 11px var(--mono); }
+    .empty-state { min-height: 280px; display: grid; place-items: center; padding: 28px; color: var(--muted); text-align: center; }
+    .empty-state div { max-width: 340px; }
+    .empty-mark { width: 54px; height: 54px; display: grid; place-items: center; margin: 0 auto 15px; color: var(--green); border: 1px solid #a9c3b2; font: 16px var(--mono); transform: rotate(-4deg); }
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; padding-top: 14px; }
+    .result-card { min-width: 0; padding: 17px; background: var(--panel); border: 1px solid var(--line); animation: arrive .24s ease-out both; }
+    .result-card[data-pipeline="rag"] { border-top: 3px solid var(--blue); }
+    .result-card[data-pipeline="graphrag"] { border-top: 3px solid var(--coral); }
+    .result-card[data-pipeline="agentic"] { border-top: 3px solid var(--green); }
+    .result-title { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .result-title h3 { margin: 0; font-size: 14px; }
+    .badge { padding: 4px 7px; color: var(--green); background: #e8f1e4; font: 10px var(--mono); text-transform: uppercase; }
+    .badge.failed { color: #913e28; background: #fae9e3; }
+    .answer { margin: 16px 0; font-size: 14px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .error { color: #9a3e29; }
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; padding: 11px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .metric span { display: block; color: var(--muted); font: 9px var(--mono); text-transform: uppercase; }
+    .metric strong { display: block; margin-top: 5px; font: 12px var(--mono); }
+    details { margin-top: 13px; border-top: 1px solid var(--line); }
+    summary { padding: 10px 0 2px; color: var(--green); font: 11px var(--mono); cursor: pointer; }
+    .trace { margin: 8px 0 0; padding: 0; list-style: none; }
+    .trace li { margin: 6px 0; padding: 9px; background: #f4f6f1; border-left: 2px solid var(--coral); font-size: 11px; overflow-wrap: anywhere; }
+    pre { max-height: 290px; overflow: auto; padding: 10px; color: #dce8df; background: #1b2d26; font: 10px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+    .foot { display: flex; justify-content: space-between; gap: 16px; margin-top: 30px; padding-top: 12px; color: var(--muted); border-top: 1px solid var(--line); font: 10px var(--mono); }
+    @keyframes arrive { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 860px) { .workspace { grid-template-columns: 1fr; } .intro { grid-template-columns: 1fr; } .dataset-stats { flex-wrap: wrap; } }
+    @media (max-width: 540px) { main { width: 94vw; padding-top: 28px; } h1 { font-size: 30px; } .topbar { padding: 0 3vw; } .top-meta { gap: 8px; font-size: 10px; } .mode-switch span { font-size: 9px; padding: 9px 2px; } .query-panel { padding: 16px; } .foot { flex-direction: column; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">TG</span><span>OLYMPIC GRAPHRAG LAB</span></div>
+    <div class="top-meta"><span class="status"><i id="status-dot" class="status-dot"></i><span id="status-text">Checking graph</span></span><span>wikipedia_corpus</span></div>
+  </header>
+  <main>
+    <section class="intro">
+      <div>
+        <p class="eyebrow">Retrieval / structured reasoning / tool use</p>
+        <h1>Olympic knowledge, tested.</h1>
+        <p class="intro-copy">Run the same corpus question through three systems. Compare answers against their retrieved evidence, graph operations, and tool paths.</p>
+      </div>
+      <div class="dataset-stats" aria-label="Corpus size">
+        <div class="stat"><strong>2,951</strong><span>documents</span></div>
+        <div class="stat"><strong>2,162</strong><span>events</span></div>
+        <div class="stat"><strong>25,430</strong><span>vectors</span></div>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <form id="question-form" class="query-panel">
+        <p class="panel-kicker">01 / Ask the corpus</p>
+        <label class="sr-only" for="question">Question</label>
+        <textarea id="question" required placeholder="How many biathlon events at the 2018 Winter Olympics had more than 73 competitors?"></textarea>
+        <p class="mode-label">System under test</p>
+        <div class="mode-switch" role="radiogroup" aria-label="Pipeline">
+          <label><input type="radio" name="mode" value="rag"><span>RAG</span></label>
+          <label><input type="radio" name="mode" value="graphrag"><span>GraphRAG</span></label>
+          <label><input type="radio" name="mode" value="agentic" checked><span>Agentic</span></label>
+          <label><input type="radio" name="mode" value="compare"><span>Compare</span></label>
+        </div>
+        <div class="controls">
+          <div class="control"><label for="top-k">RAG top-k</label><input id="top-k" type="number" min="1" max="20" value="5"></div>
+          <div class="control"><label for="max-turns">Agent turns</label><input id="max-turns" type="number" min="1" max="12" value="6"></div>
+        </div>
+        <div class="submit-row"><small>Graph operations run deterministically in TigerGraph.</small><button id="run-button" class="run-button" type="submit">Run experiment <span aria-hidden="true">→</span></button></div>
+      </form>
+
+      <section class="results" aria-live="polite">
+        <div class="results-head"><h2>02 / Results and evidence</h2><span id="run-state" class="run-state">Ready</span></div>
+        <div id="result-grid" class="result-grid"><div class="empty-state"><div><span class="empty-mark">150</span><strong>One question. Three strategies.</strong><p>Choose a pipeline or compare all three. Evidence and tool traces stay attached to each answer.</p></div></div></div>
+      </section>
+    </section>
+    <footer class="foot"><span>Corpus is the source of truth · all vector search runs in TigerGraph</span><span>LLM usage is provider-reported; unavailable stays unavailable</span></footer>
+  </main>
+<script>
+  const $ = (selector) => document.querySelector(selector);
+  const form = $("#question-form");
+  const button = $("#run-button");
+  const state = $("#run-state");
+  const grid = $("#result-grid");
+  const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[char]));
+  const pretty = (value) => esc(JSON.stringify(value ?? [], null, 2));
+
+  function resultCard(name, result) {
+    const data = result.data || {};
+    const okay = result.success === true;
+    const tokens = data.total_tokens == null ? "n/a" : data.total_tokens;
+    const calls = Array.isArray(data.tool_calls) ? data.tool_calls : [];
+    const answer = okay ? data.answer || "No answer returned." : result.error || "Pipeline failed.";
+    const trace = calls.length
+      ? `<ol class="trace">${calls.map((call) => `<li><strong>${esc(call.tool || "tool")}</strong> ${esc(JSON.stringify(call.arguments || {}))}<br>${esc(JSON.stringify(call.result || {}))}</li>`).join("")}</ol>`
+      : "";
+    const evidence = data.evidence ?? [];
+    return `<article class="result-card" data-pipeline="${esc(name)}">
+      <div class="result-title"><h3>${esc(name === "agentic" ? "Agentic GraphRAG" : name === "graphrag" ? "GraphRAG" : "RAG")}</h3><span class="badge ${okay ? "" : "failed"}">${okay ? "complete" : "error"}</span></div>
+      <p class="answer ${okay ? "" : "error"}">${esc(answer)}</p>
+      <div class="metrics"><div class="metric"><span>Latency</span><strong>${data.latency_seconds == null ? "n/a" : `${Number(data.latency_seconds).toFixed(2)}s`}</strong></div><div class="metric"><span>LLM tokens</span><strong>${esc(tokens)}</strong></div><div class="metric"><span>Tool calls</span><strong>${calls.length || data.tool_calls?.length || 0}</strong></div></div>
+      ${calls.length ? `<details open><summary>Tool trajectory · ${calls.length}</summary>${trace}</details>` : ""}
+      <details><summary>Evidence</summary><pre>${pretty(evidence)}</pre></details>
+    </article>`;
+  }
+
+  async function checkHealth() {
+    const dot = $("#status-dot");
+    const label = $("#status-text");
+    try {
+      const response = await fetch("/health", {cache: "no-store"});
+      const result = await response.json();
+      dot.className = `status-dot ${result.ready ? "online" : "offline"}`;
+      label.textContent = result.ready ? "Graph ready" : "Graph unavailable";
+    } catch {
+      dot.className = "status-dot offline";
+      label.textContent = "Service unavailable";
+    }
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const question = $("#question").value.trim();
+    if (!question) return;
+    button.disabled = true;
+    state.textContent = "Running";
+    grid.innerHTML = `<div class="empty-state"><div><span class="empty-mark">···</span><strong>Collecting evidence</strong><p>Waiting for TigerGraph and the selected model.</p></div></div>`;
+    const mode = document.querySelector('input[name="mode"]:checked').value;
+    try {
+      const response = await fetch("/api/run", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({question, mode, top_k: Number($("#top-k").value), max_tool_turns: Number($("#max-turns").value)})
+      });
+      const result = await response.json();
+      if (!result.results) throw new Error(result.error || "The request failed.");
+      grid.innerHTML = Object.entries(result.results).map(([name, item]) => resultCard(name, item)).join("");
+      state.textContent = result.success ? "Complete" : "Completed with errors";
+    } catch (error) {
+      grid.innerHTML = `<div class="empty-state"><div><span class="empty-mark">!</span><strong>Run unavailable</strong><p>${esc(error.message)}</p></div></div>`;
+      state.textContent = "Failed";
+    } finally {
+      button.disabled = false;
+    }
+  });
+  checkHealth();
+</script>
+</body>
+</html>

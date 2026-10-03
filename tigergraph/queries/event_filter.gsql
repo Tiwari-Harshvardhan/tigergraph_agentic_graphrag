@@ -1,0 +1,27 @@
+CREATE QUERY event_filter(
+  STRING p_sport,
+  STRING p_edition,
+  STRING p_discipline,
+  STRING p_season,
+  STRING p_competitor_op,
+  UINT p_competitor_value,
+  UINT p_year
+) FOR GRAPH wikipedia_corpus {
+  matched_events = SELECT e
+    FROM events:e
+    WHERE (p_sport == "" OR e.sport == p_sport)
+      AND (p_edition == "" OR e.edition == p_edition)
+      AND (p_discipline == "" OR e.discipline == p_discipline)
+      AND (p_season == "" OR e.season == p_season)
+      AND (p_year == 0 OR e.year == p_year)
+      AND (
+        p_competitor_op == ""
+        OR (p_competitor_op == ">" AND e.competitor_count > p_competitor_value)
+        OR (p_competitor_op == ">=" AND e.competitor_count >= p_competitor_value)
+        OR (p_competitor_op == "<" AND e.competitor_count < p_competitor_value)
+        OR (p_competitor_op == "<=" AND e.competitor_count <= p_competitor_value)
+        OR (p_competitor_op == "=" AND e.competitor_count == p_competitor_value)
+      );
+
+  PRINT matched_events;
+}

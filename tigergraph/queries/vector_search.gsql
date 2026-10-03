@@ -1,0 +1,4 @@
+CREATE QUERY vector_search(LIST<FLOAT> query_vector, INT top_k = 5) FOR GRAPH wikipedia_corpus {
+  results = vectorSearch({chunk.embedding}, query_vector, top_k);
+  PRINT results;
+}

@@ -1,0 +1,1 @@
+"""Readiness-gated console entrypoint for the local GraphRAG demo."""

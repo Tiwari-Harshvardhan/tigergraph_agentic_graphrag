@@ -1,0 +1,5 @@
+pyTigerGraph==2.0.4
+python-dotenv==1.2.2
+sentence-transformers==6.1.0
+google-genai==1.49.0
+openai==1.105.0

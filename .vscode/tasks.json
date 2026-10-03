@@ -1,0 +1,15 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "TigerGraph readiness check",
+      "type": "process",
+      "command": "python",
+      "args": ["-m", "backend.services.tigergraph_service", "check"],
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+CREATE OR REPLACE QUERY event_lookup(STRING event_id) FOR GRAPH wikipedia_corpus {
+    matched_events = SELECT e
+        FROM events:e
+        WHERE e.event_id == event_id;
+
+    editions = SELECT edition
+        FROM matched_events:e -(part_of)-> OlympicEdition:edition;
+
+    PRINT matched_events;
+    PRINT editions;
+}

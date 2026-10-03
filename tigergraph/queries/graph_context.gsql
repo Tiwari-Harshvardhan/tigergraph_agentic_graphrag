@@ -1,0 +1,33 @@
+CREATE OR REPLACE QUERY graph_context(STRING p_event_id, STRING p_chunk_id = "") FOR GRAPH wikipedia_corpus {
+    matched_events = SELECT e
+        FROM events:e
+        WHERE e.event_id == p_event_id;
+
+    editions = SELECT edition
+        FROM matched_events:e -(part_of)-> OlympicEdition:edition;
+
+    event_documents = SELECT d
+        FROM matched_events:e -(reverse_describes)-> Document:d;
+
+    chunk_documents = SELECT d
+        FROM chunk:c -(reverse_contains)-> Document:d
+        WHERE c.chunk_id == p_chunk_id;
+
+    event_chunks = SELECT c
+        FROM event_documents:d -(contains)-> chunk:c;
+
+    selected_chunks = SELECT c
+        FROM chunk:c
+        WHERE p_chunk_id != "" AND c.chunk_id == p_chunk_id;
+
+    preceding_events = SELECT previous
+        FROM matched_events:e -(preceded_by)-> events:previous;
+
+    PRINT matched_events;
+    PRINT editions;
+    PRINT event_documents;
+    PRINT chunk_documents;
+    PRINT event_chunks;
+    PRINT selected_chunks;
+    PRINT preceding_events;
+}

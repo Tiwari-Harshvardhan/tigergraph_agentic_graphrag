@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+.venv/
+credentials/
+results/runs/
+benchmark/results/
+questions/eval_hidden.jsonl
+__pycache__/
+*.py[cod]
